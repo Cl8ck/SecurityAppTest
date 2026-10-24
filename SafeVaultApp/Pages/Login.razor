@@ -1,0 +1,182 @@
+@page "/login"
+@inject HttpClient Http
+@inject CookieAuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager Navigation
+@using Microsoft.AspNetCore.Components.WebAssembly.Http
+
+<PageTitle>@(isRegistering ? "Create account" : "Sign in")</PageTitle>
+
+<div class="auth-page">
+    <section class="auth-card" aria-labelledby="auth-title">
+        <p class="auth-eyebrow">SAFEVAULT</p>
+        <h1 id="auth-title">@(isRegistering ? "Create your account" : "Welcome back")</h1>
+        <p class="auth-description">@(isRegistering ? "Register to access your secure home." : "Sign in to continue to your secure home.")</p>
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger" role="alert">@errorMessage</div>
+        }
+
+        @if (isRegistering)
+        {
+            <EditForm Model="registerForm" OnValidSubmit="RegisterAsync">
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+                <div class="mb-3">
+                    <label class="form-label" for="register-username">Username</label>
+                    <InputText id="register-username" class="form-control" @bind-Value="registerForm.Username" autocomplete="username" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="register-email">Email</label>
+                    <InputText id="register-email" type="email" class="form-control" @bind-Value="registerForm.Email" autocomplete="email" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="register-password">Password</label>
+                    <InputText id="register-password" type="password" class="form-control" @bind-Value="registerForm.Password" autocomplete="new-password" />
+                    <small class="form-text text-muted">Use 12+ characters with uppercase, lowercase, a number, and a symbol.</small>
+                </div>
+                <button class="btn btn-primary w-100" type="submit" disabled="@isBusy">
+                    @(isBusy ? "Creating account..." : "Create account")
+                </button>
+            </EditForm>
+        }
+        else
+        {
+            <EditForm Model="loginForm" OnValidSubmit="LoginAsync">
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+                <div class="mb-3">
+                    <label class="form-label" for="login-username">Username</label>
+                    <InputText id="login-username" class="form-control" @bind-Value="loginForm.Username" autocomplete="username" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="login-password">Password</label>
+                    <InputText id="login-password" type="password" class="form-control" @bind-Value="loginForm.Password" autocomplete="current-password" />
+                </div>
+                <button class="btn btn-primary w-100" type="submit" disabled="@isBusy">
+                    @(isBusy ? "Signing in..." : "Sign in")
+                </button>
+            </EditForm>
+        }
+
+        <p class="auth-switch">
+            @if (isRegistering)
+            {
+                <span>Already registered? <button class="btn btn-link p-0" @onclick="ShowLogin">Sign in</button></span>
+            }
+            else
+            {
+                <span>New to SafeVault? <button class="btn btn-link p-0" @onclick="ShowRegister">Create an account</button></span>
+            }
+        </p>
+    </section>
+</div>
+
+@code {
+    private LoginFormModel loginForm = new();
+    private RegisterFormModel registerForm = new();
+    private bool isRegistering;
+    private bool isBusy;
+    private string? errorMessage;
+
+    private void ShowLogin()
+    {
+        isRegistering = false;
+        errorMessage = null;
+    }
+
+    private void ShowRegister()
+    {
+        isRegistering = true;
+        errorMessage = null;
+    }
+
+    private async Task LoginAsync()
+    {
+        var request = new LoginRequest { Username = loginForm.Username, Password = loginForm.Password };
+        await SubmitAsync("api/auth/login", request, "Sign in failed. Check your username and password.");
+    }
+
+    private async Task RegisterAsync()
+    {
+        var request = new RegisterRequest
+        {
+            Username = registerForm.Username,
+            Email = registerForm.Email,
+            Password = registerForm.Password
+        };
+        await SubmitAsync("api/auth/register", request, "Registration failed. Check your details and try again.");
+    }
+
+    private async Task SubmitAsync<TRequest>(string endpoint, TRequest request, string fallbackMessage)
+    {
+        isBusy = true;
+        errorMessage = null;
+        try
+        {
+            using var httpRequest = new HttpRequestMessage(HttpMethod.Post, endpoint)
+            {
+                Content = JsonContent.Create(request)
+            };
+            httpRequest.SetBrowserRequestCredentials(BrowserRequestCredentials.Include);
+            using var response = await Http.SendAsync(httpRequest);
+            var mediaType = response.Content.Headers.ContentType?.MediaType;
+            if (mediaType is not ("application/json" or "application/problem+json"))
+            {
+                errorMessage = "The authentication API is unavailable. Run the SafeVaultApp.Server project to sign in.";
+                return;
+            }
+
+            if (!response.IsSuccessStatusCode)
+            {
+                errorMessage = await GetErrorMessageAsync(response, fallbackMessage);
+                return;
+            }
+
+            await AuthenticationStateProvider.RefreshAsync();
+            Navigation.NavigateTo("/");
+        }
+        finally
+        {
+            isBusy = false;
+        }
+    }
+
+    private static async Task<string> GetErrorMessageAsync(HttpResponseMessage response, string fallback)
+    {
+        var problem = await response.Content.ReadFromJsonAsync<ProblemResponse>();
+        if (problem?.Errors is { Count: > 0 } errors)
+        {
+            return string.Join(" ", errors.Values.SelectMany(messages => messages));
+        }
+
+        return string.IsNullOrWhiteSpace(problem?.Detail) ? fallback : problem.Detail;
+    }
+
+    private sealed record ProblemResponse(string? Detail, Dictionary<string, string[]>? Errors);
+
+    private sealed class LoginFormModel
+    {
+        [Required, StringLength(64)]
+        public string Username { get; set; } = string.Empty;
+
+        [Required, StringLength(128)]
+        public string Password { get; set; } = string.Empty;
+    }
+
+    private sealed class RegisterFormModel
+    {
+        [Required, StringLength(64, MinimumLength = 3)]
+        [RegularExpression(@"^[a-zA-Z0-9_.-]+$")]
+        public string Username { get; set; } = string.Empty;
+
+        [Required, EmailAddress, StringLength(256)]
+        public string Email { get; set; } = string.Empty;
+
+        [Required, StringLength(128, MinimumLength = 12)]
+        [RegularExpression(
+            @"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z0-9]).+$",
+            ErrorMessage = "Password must include uppercase, lowercase, a number, and a symbol.")]
+        public string Password { get; set; } = string.Empty;
+    }
+}

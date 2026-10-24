@@ -1,0 +1,27 @@
+{
+  "version": 2,
+  "dgSpecHash": "unUzTE/4824=",
+  "success": true,
+  "projectFilePath": "C:\\Users\\Jason Martinez\\Documents\\GitHub\\SecurityAppTest\\SafeVaultApp.Server\\SafeVaultApp.Server.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\Jason Martinez\\.nuget\\packages\\microsoft.aspnetcore.components.webassembly\\10.0.13\\microsoft.aspnetcore.components.webassembly.10.0.13.nupkg.sha512",
+    "C:\\Users\\Jason Martinez\\.nuget\\packages\\microsoft.aspnetcore.components.webassembly.server\\10.0.13\\microsoft.aspnetcore.components.webassembly.server.10.0.13.nupkg.sha512",
+    "C:\\Users\\Jason Martinez\\.nuget\\packages\\microsoft.aspnetcore.identity.entityframeworkcore\\10.0.13\\microsoft.aspnetcore.identity.entityframeworkcore.10.0.13.nupkg.sha512",
+    "C:\\Users\\Jason Martinez\\.nuget\\packages\\microsoft.aspnetcore.openapi\\10.0.13\\microsoft.aspnetcore.openapi.10.0.13.nupkg.sha512",
+    "C:\\Users\\Jason Martinez\\.nuget\\packages\\microsoft.data.sqlite.core\\10.0.13\\microsoft.data.sqlite.core.10.0.13.nupkg.sha512",
+    "C:\\Users\\Jason Martinez\\.nuget\\packages\\microsoft.entityframeworkcore\\10.0.13\\microsoft.entityframeworkcore.10.0.13.nupkg.sha512",
+    "C:\\Users\\Jason Martinez\\.nuget\\packages\\microsoft.entityframeworkcore.abstractions\\10.0.13\\microsoft.entityframeworkcore.abstractions.10.0.13.nupkg.sha512",
+    "C:\\Users\\Jason Martinez\\.nuget\\packages\\microsoft.entityframeworkcore.analyzers\\10.0.13\\microsoft.entityframeworkcore.analyzers.10.0.13.nupkg.sha512",
+    "C:\\Users\\Jason Martinez\\.nuget\\packages\\microsoft.entityframeworkcore.relational\\10.0.13\\microsoft.entityframeworkcore.relational.10.0.13.nupkg.sha512",
+    "C:\\Users\\Jason Martinez\\.nuget\\packages\\microsoft.entityframeworkcore.sqlite\\10.0.13\\microsoft.entityframeworkcore.sqlite.10.0.13.nupkg.sha512",
+    "C:\\Users\\Jason Martinez\\.nuget\\packages\\microsoft.entityframeworkcore.sqlite.core\\10.0.13\\microsoft.entityframeworkcore.sqlite.core.10.0.13.nupkg.sha512",
+    "C:\\Users\\Jason Martinez\\.nuget\\packages\\microsoft.extensions.dependencymodel\\10.0.13\\microsoft.extensions.dependencymodel.10.0.13.nupkg.sha512",
+    "C:\\Users\\Jason Martinez\\.nuget\\packages\\microsoft.jsinterop.webassembly\\10.0.13\\microsoft.jsinterop.webassembly.10.0.13.nupkg.sha512",
+    "C:\\Users\\Jason Martinez\\.nuget\\packages\\microsoft.openapi\\2.12.2\\microsoft.openapi.2.12.2.nupkg.sha512",
+    "C:\\Users\\Jason Martinez\\.nuget\\packages\\sqlitepclraw.bundle_e_sqlite3\\2.1.13\\sqlitepclraw.bundle_e_sqlite3.2.1.13.nupkg.sha512",
+    "C:\\Users\\Jason Martinez\\.nuget\\packages\\sqlitepclraw.core\\2.1.13\\sqlitepclraw.core.2.1.13.nupkg.sha512",
+    "C:\\Users\\Jason Martinez\\.nuget\\packages\\sqlitepclraw.lib.e_sqlite3\\2.1.13\\sqlitepclraw.lib.e_sqlite3.2.1.13.nupkg.sha512",
+    "C:\\Users\\Jason Martinez\\.nuget\\packages\\sqlitepclraw.provider.e_sqlite3\\2.1.13\\sqlitepclraw.provider.e_sqlite3.2.1.13.nupkg.sha512"
+  ],
+  "logs": []
+}

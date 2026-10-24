@@ -1,0 +1,294 @@
+@page "/admin"
+@attribute [Authorize(Roles = "Admin")]
+@using Microsoft.AspNetCore.Components.WebAssembly.Http
+@inject HttpClient Http
+@inject CookieAuthenticationStateProvider CookieAuthenticationStateProvider
+@inject NavigationManager Navigation
+
+<PageTitle>Admins</PageTitle>
+
+<h1>Admin user management</h1>
+<p>View registered accounts, assign roles, and add users.</p>
+
+@if (!string.IsNullOrWhiteSpace(errorMessage))
+{
+    <div class="alert alert-danger" role="alert">@errorMessage</div>
+}
+
+@if (!string.IsNullOrWhiteSpace(successMessage))
+{
+    <div class="alert alert-success" role="status">@successMessage</div>
+}
+
+<section class="mb-5" aria-labelledby="users-heading">
+    <h2 id="users-heading">Registered users</h2>
+    @if (isLoading)
+    {
+        <p role="status">Loading users...</p>
+    }
+    else if (users.Count == 0)
+    {
+        <p>No users are registered yet.</p>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-striped align-middle">
+                <thead>
+                    <tr>
+                        <th scope="col">Username</th>
+                        <th scope="col">Email</th>
+                        <th scope="col">Roles</th>
+                        <th scope="col">Change role</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var user in users)
+                    {
+                        <tr @key="user.Id">
+                            <td>@user.Username</td>
+                            <td>@user.Email</td>
+                            <td>@(user.Roles.Count == 0 ? "None" : string.Join(", ", user.Roles))</td>
+                            <td>
+                                <select class="form-select"
+                                        aria-label="@($"Role for {user.Username}")"
+                                        value="@user.SelectedRole"
+                                        disabled="@user.IsUpdating"
+                                        @onchange="args => UpdateRoleAsync(user, args)">
+                                    <option value="User" disabled="@IsLastAdministrator(user)">User</option>
+                                    <option value="Admin">Admin</option>
+                                </select>
+                                @if (IsLastAdministrator(user))
+                                {
+                                    <small class="form-text text-muted">The last administrator must keep the Admin role.</small>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>
+
+<section aria-labelledby="create-user-heading">
+    <h2 id="create-user-heading">Add user</h2>
+    <EditForm Model="createForm" OnValidSubmit="CreateUserAsync">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label" for="new-username">Username</label>
+                <InputText id="new-username" class="form-control" @bind-Value="createForm.Username" autocomplete="off" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label" for="new-email">Email</label>
+                <InputText id="new-email" type="email" class="form-control" @bind-Value="createForm.Email" autocomplete="off" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label" for="new-password">Temporary password</label>
+                <InputText id="new-password" type="password" class="form-control" @bind-Value="createForm.Password" autocomplete="new-password" />
+                <small class="form-text text-muted">Use 12+ characters with uppercase, lowercase, a number, and a symbol.</small>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label" for="new-role">Role</label>
+                <InputSelect id="new-role" class="form-select" @bind-Value="createForm.Role">
+                    <option value="User">User</option>
+                    <option value="Admin">Admin</option>
+                </InputSelect>
+            </div>
+            <div class="col-12">
+                <button class="btn btn-primary" type="submit" disabled="@isCreating">
+                    @(isCreating ? "Adding user..." : "Add user")
+                </button>
+            </div>
+        </div>
+    </EditForm>
+</section>
+
+@code {
+    private readonly List<ManagedUserViewModel> users = [];
+    private readonly CreateUserFormModel createForm = new();
+    private bool isLoading = true;
+    private bool isCreating;
+    private string? errorMessage;
+    private string? successMessage;
+    private int AdministratorCount => users.Count(user => user.Roles.Contains("Admin", StringComparer.Ordinal));
+
+    private bool IsLastAdministrator(ManagedUserViewModel user) =>
+        AdministratorCount == 1 && user.Roles.Contains("Admin", StringComparer.Ordinal);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUsersAsync();
+    }
+
+    private async Task LoadUsersAsync()
+    {
+        isLoading = true;
+        try
+        {
+            using var request = CreateRequest(HttpMethod.Get, "api/admin/users");
+            using var response = await Http.SendAsync(request);
+            if (!response.IsSuccessStatusCode)
+            {
+                errorMessage = await ReadErrorAsync(response, "Could not load registered users.");
+                return;
+            }
+
+            var accountList = await response.Content.ReadFromJsonAsync<List<ManagedUserResponse>>()
+                ?? throw new InvalidDataException("The user-management endpoint returned an empty response.");
+            users.Clear();
+            users.AddRange(accountList.Select(account => new ManagedUserViewModel(account)));
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task CreateUserAsync()
+    {
+        isCreating = true;
+        errorMessage = null;
+        successMessage = null;
+        try
+        {
+            var requestBody = new CreateManagedUserRequest
+            {
+                Username = createForm.Username,
+                Email = createForm.Email,
+                Password = createForm.Password,
+                Role = createForm.Role
+            };
+            using var request = CreateRequest(HttpMethod.Post, "api/admin/users", requestBody);
+            using var response = await Http.SendAsync(request);
+            if (!response.IsSuccessStatusCode)
+            {
+                errorMessage = await ReadErrorAsync(response, "Could not add this user.");
+                return;
+            }
+
+            var account = await response.Content.ReadFromJsonAsync<ManagedUserResponse>()
+                ?? throw new InvalidDataException("The user-management endpoint returned an empty account.");
+            users.Add(new ManagedUserViewModel(account));
+            users.Sort((left, right) => string.Compare(left.Username, right.Username, StringComparison.OrdinalIgnoreCase));
+            createForm.Username = string.Empty;
+            createForm.Email = string.Empty;
+            createForm.Password = string.Empty;
+            createForm.Role = "User";
+            successMessage = $"User {account.Username} was added.";
+        }
+        finally
+        {
+            isCreating = false;
+        }
+    }
+
+    private async Task UpdateRoleAsync(ManagedUserViewModel user, ChangeEventArgs args)
+    {
+        if (args.Value is not string role || role is not ("User" or "Admin") || role == user.SelectedRole)
+        {
+            return;
+        }
+
+        var previousRole = user.SelectedRole;
+        user.SelectedRole = role;
+        user.IsUpdating = true;
+        errorMessage = null;
+        successMessage = null;
+        try
+        {
+            using var request = CreateRequest(
+                HttpMethod.Put,
+                $"api/admin/users/{Uri.EscapeDataString(user.Id)}/role",
+                new UpdateManagedUserRoleRequest { Role = role });
+            using var response = await Http.SendAsync(request);
+            if (!response.IsSuccessStatusCode)
+            {
+                user.SelectedRole = previousRole;
+                errorMessage = await ReadErrorAsync(response, $"Could not change {user.Username}'s role.");
+                return;
+            }
+
+            var account = await response.Content.ReadFromJsonAsync<ManagedUserResponse>()
+                ?? throw new InvalidDataException("The user-management endpoint returned an empty account.");
+            user.Roles = account.Roles;
+            user.SelectedRole = role;
+            successMessage = $"{user.Username}'s role was changed to {role}.";
+
+            var authenticationState = await CookieAuthenticationStateProvider.GetAuthenticationStateAsync();
+            if (string.Equals(
+                    authenticationState.User.Identity?.Name,
+                    user.Username,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                await CookieAuthenticationStateProvider.RefreshAsync();
+                if (!account.Roles.Contains("Admin", StringComparer.Ordinal))
+                {
+                    Navigation.NavigateTo("/user");
+                }
+            }
+        }
+        finally
+        {
+            user.IsUpdating = false;
+        }
+    }
+
+    private static HttpRequestMessage CreateRequest<TBody>(HttpMethod method, string endpoint, TBody body)
+    {
+        var request = CreateRequest(method, endpoint);
+        request.Content = JsonContent.Create(body);
+        return request;
+    }
+
+    private static HttpRequestMessage CreateRequest(HttpMethod method, string endpoint)
+    {
+        var request = new HttpRequestMessage(method, endpoint);
+        request.SetBrowserRequestCredentials(BrowserRequestCredentials.Include);
+        return request;
+    }
+
+    private static async Task<string> ReadErrorAsync(HttpResponseMessage response, string fallback)
+    {
+        var problem = await response.Content.ReadFromJsonAsync<ProblemResponse>();
+        if (problem?.Errors is { Count: > 0 } errors)
+        {
+            return string.Join(" ", errors.Values.SelectMany(messages => messages));
+        }
+
+        return string.IsNullOrWhiteSpace(problem?.Detail) ? fallback : problem.Detail;
+    }
+
+    private sealed record ProblemResponse(string? Detail, Dictionary<string, string[]>? Errors);
+
+    private sealed class ManagedUserViewModel(ManagedUserResponse account)
+    {
+        public string Id { get; } = account.Id;
+        public string Username { get; } = account.Username;
+        public string? Email { get; } = account.Email;
+        public IReadOnlyList<string> Roles { get; set; } = account.Roles;
+        public string SelectedRole { get; set; } = account.Roles.Contains("Admin", StringComparer.Ordinal) ? "Admin" : "User";
+        public bool IsUpdating { get; set; }
+    }
+
+    private sealed class CreateUserFormModel
+    {
+        [Required, StringLength(64, MinimumLength = 3)]
+        [RegularExpression(@"^[a-zA-Z0-9_.-]+$")]
+        public string Username { get; set; } = string.Empty;
+
+        [Required, EmailAddress, StringLength(256)]
+        public string Email { get; set; } = string.Empty;
+
+        [Required, StringLength(128, MinimumLength = 12)]
+        [RegularExpression(
+            @"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z0-9]).+$",
+            ErrorMessage = "Password must include uppercase, lowercase, a number, and a symbol.")]
+        public string Password { get; set; } = string.Empty;
+
+        [Required, RegularExpression("^(User|Admin)$")]
+        public string Role { get; set; } = "User";
+    }
+}

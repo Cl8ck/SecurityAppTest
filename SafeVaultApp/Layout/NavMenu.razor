@@ -1,0 +1,61 @@
+﻿<div class="top-row ps-3 navbar navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="">SafeVaultApp</a>
+        <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+    </div>
+</div>
+
+<div class="@NavMenuCssClass nav-scrollable" @onclick="ToggleNavMenu">
+    <nav class="nav flex-column">
+        <AuthorizeView>
+            <Authorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="" Match="NavLinkMatch.All">Home</NavLink>
+                </div>
+                <AuthorizeView Roles="Admin" Context="adminAuth">
+                    <div class="nav-item px-3">
+                        <NavLink class="nav-link" href="admin">Admins</NavLink>
+                    </div>
+                </AuthorizeView>
+                <AuthorizeView Roles="User" Context="userAuth">
+                    <div class="nav-item px-3">
+                        <NavLink class="nav-link" href="user">Users</NavLink>
+                    </div>
+                </AuthorizeView>
+                <div class="nav-item px-3">
+                    <button class="nav-link btn btn-link text-start" @onclick="SignOutAsync">Sign out</button>
+                </div>
+            </Authorized>
+            <NotAuthorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="login">Sign in</NavLink>
+                </div>
+            </NotAuthorized>
+        </AuthorizeView>
+    </nav>
+</div>
+
+@code {
+    [Inject]
+    private CookieAuthenticationStateProvider AuthenticationStateProvider { get; set; } = default!;
+
+    [Inject]
+    private NavigationManager Navigation { get; set; } = default!;
+
+    private bool collapseNavMenu = true;
+
+    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+
+    private void ToggleNavMenu()
+    {
+        collapseNavMenu = !collapseNavMenu;
+    }
+
+    private async Task SignOutAsync()
+    {
+        await AuthenticationStateProvider.SignOutAsync();
+        Navigation.NavigateTo("/login");
+    }
+}

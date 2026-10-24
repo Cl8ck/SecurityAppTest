@@ -1,0 +1,60 @@
+@baseUrl = http://localhost:5259
+
+### Register a local account (stores a secure password hash and returns an auth cookie)
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+
+{
+  "username": "vaultuser",
+  "email": "vaultuser@example.test",
+  "password": "Practice!Password123"
+}
+
+### Login (use the registered username)
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "vaultuser",
+  "password": "Practice!Password123"
+}
+
+### Invalid login
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "vaultuser",
+  "password": "incorrect"
+}
+
+### Current account (requires the auth cookie)
+GET {{baseUrl}}/api/auth/me
+
+### Admin-only API (requires an Admin role)
+GET {{baseUrl}}/api/admin
+
+### List users and assigned roles (requires an Admin role)
+GET {{baseUrl}}/api/admin/users
+
+### Add a user (requires an Admin role)
+POST {{baseUrl}}/api/admin/users
+Content-Type: application/json
+
+{
+  "username": "manageduser",
+  "email": "manageduser@example.test",
+  "password": "Practice!ManagedUser123",
+  "role": "User"
+}
+
+### Change a user's role (replace {userId} with the ID from the list response)
+PUT {{baseUrl}}/api/admin/users/{userId}/role
+Content-Type: application/json
+
+{
+  "role": "Admin"
+}
+
+### Logout (requires the auth cookie)
+POST {{baseUrl}}/api/auth/logout
